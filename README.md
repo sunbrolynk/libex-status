@@ -1,90 +1,99 @@
-<div align="right">
-  <a title="English" href="README.md"><img src="https://img.shields.io/badge/-English-A31F34?style=for-the-badge" alt="English" /></a>
-  <a title="简体中文" href="README_zh-CN.md"><img src="https://img.shields.io/badge/-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-545759?style=for-the-badge" alt="简体中文"></a>
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/logo-dark.png">
+  <img src="docs/readme/logo.png" alt="Libex" width="400">
+</picture>
+
+[![Status](https://img.shields.io/badge/status-status.libexdb.com-f79320)](https://status.libexdb.com)
+[![Powered by UptimeFlare](https://img.shields.io/badge/powered%20by-UptimeFlare-blue)](https://github.com/lyc8503/UptimeFlare)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![Checks](https://github.com/sunbrolynk/libex-status/actions/workflows/checks.yml/badge.svg?branch=dev)](https://github.com/sunbrolynk/libex-status/actions/workflows/checks.yml)
+
+[![Books](https://libexdb.com/db/stats/badge/books.svg)](https://libexdb.com/db/stats)
+[![Authors](https://libexdb.com/db/stats/badge/authors.svg)](https://libexdb.com/db/stats)
+[![Series](https://libexdb.com/db/stats/badge/series.svg)](https://libexdb.com/db/stats)
+
+The status page for the public Libex instance.
+
 </div>
 
-# ✔[UptimeFlare](https://github.com/lyc8503/UptimeFlare)
+---
 
-A more advanced, serverless, and free uptime monitoring & status page solution, powered by Cloudflare Workers, complete with a user-friendly interface.
+This is the uptime page for [Libex](https://github.com/LibexHQ/Libex)'s public instance at
+[libexdb.com](https://libexdb.com), live at [status.libexdb.com](https://status.libexdb.com). It
+runs on [UptimeFlare](https://github.com/lyc8503/UptimeFlare) by lyc8503: a Cloudflare Worker
+checks each target every minute and a Cloudflare Pages site shows the history.
 
-📢 **[[SECURITY ADVISORY](https://github.com/lyc8503/UptimeFlare/security/advisories/GHSA-36q9-v7p3-vj6v) 2026/03/04]** A vulnerability (CVE-2026-29779) that could expose monitor configuration and credentials in `uptime.config.ts` to clients was fixed. Versions between 2025-09-21 (from commit `41257c6`) and 2026-03-04 are affected. **Affected users are strongly advised to upgrade to the latest version.**
+## What it watches
 
-🎉 **[UPDATE 2026/01/03]** I have just migrated UptimeFlare from KV to D1 Database. I also updated the Terraform Cloudflare provider to v5 and improved the deployment process. The data structure has been optimized to resolve long-standing performance issues.
+| Monitor | URL | Up when |
+|---|---|---|
+| API | https://libexdb.com/ | it answers 200 |
+| API health | https://libexdb.com/health | it answers 200 with `"status":"ok"` |
+| Database stats | https://libexdb.com/db/stats | it answers 200 |
 
-New users can deploy directly, while existing users can have a simple auto migration process (upgrade docs below)! Feel free to open an issue if you run into any trouble deploying.
+Downtime and recovery alerts go to Discord. Everything is set in `uptime.config.ts`.
 
-## ⭐Features
+## Deploying
 
-- Open-source, easy to deploy (in under 10 minutes, no local tools required), and free
-- Monitoring capabilities
-  - Up to 50 checks at 1-minute intervals
-  - Geo-specific checks from over [310 cities](https://www.cloudflare.com/network/) worldwide
-  - Support for HTTP/HTTPS/TCP port monitoring
-  - Up to 90-day uptime history and uptime percentage tracking
-  - Customizable request methods, headers, and body for HTTP(s)
-  - Custom status code & keyword checks for HTTP(s)
-  - Downtime notification supporting [100+ notification channels](https://github.com/caronc/apprise/wiki)
-  - Customizable Webhook
-  - Multi-language support (English/Chinese)
-- Status page
-  - Interactive ping (response time) chart for all types of monitors
-  - Scheduled maintenances alerts & Incident history page
-  - Responsive UI that adapts to your system theme
-  - Customizable status page
-  - Use your own domain with CNAME
-  - Optional password authentication (private status page)
-  - JSON API for fetching realtime status data
+Pushing to `main` runs `.github/workflows/deploy.yml`, which builds the worker and the page and
+applies them with Terraform and wrangler. It needs these repository secrets:
 
-## 👀Demo
+| Secret | What it is |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare token with Workers, Pages and D1 edit rights |
+| `CLOUDFLARE_ACCOUNT_ID` | Optional; looked up from the token when it's missing |
+| `DISCORD_WEBHOOK_URL` | Discord webhook for alerts; with none set, no alerts are sent |
 
-My status page (Online demo): https://uptimeflare.pages.dev/
+The webhook URL is inlined into the worker bundle at build time with `wrangler --define`, so it
+never sits in the repo and never reaches the page.
 
-Some screenshots:
+## Cloudflare names
 
-![Desktop, Light theme](docs/desktop.png)
+Three status pages share one Cloudflare account, so every resource name here comes from one
+prefix, `uptimeflare-libex`, instead of upstream's fixed `uptimeflare` names:
 
-## ⚡Quickstart / 📄Documentation
+| Resource | Name |
+|---|---|
+| Worker | `uptimeflare-libex_worker` |
+| D1 database | `uptimeflare-libex_d1` |
+| Pages project | `uptimeflare-libex` (`uptimeflare-libex.pages.dev`) |
+| Old KV namespace the migration looks for | `uptimeflare-libex_kv` |
 
-Please refer to [Wiki](https://github.com/lyc8503/UptimeFlare/wiki)
+The prefix is `TF_VAR_UF_PREFIX` at the top of `deploy.yml`. These files carry the rename:
 
-## 🚀Upgrade existing deployments
+- `.github/workflows/deploy.yml`: the prefix, the Durable Object lookup, the Terraform imports
+  and the Pages upload
+- `deploy.tf`: the `UF_PREFIX` variable and the D1, Worker and Pages names
+- `deploy/init_d1.py` and `deploy/migrate_kv.py`: the D1 and KV names
+- `wrangler.toml`, `worker/wrangler.toml` and `entrypoint.sh`: the same names written out, for
+  local builds and Docker
 
-Get the latest features right away with [simple upgrade process](https://github.com/lyc8503/UptimeFlare/wiki/Synchronize-updates-from-upstream)
+UptimeFlare's Upstream Sync workflow replaces everything except `uptime.config.ts`, which would
+undo the rename and the repo checks, and the branch rules stop it pushing to `main` anyway. I
+bring upstream changes in by hand on a branch and re-apply the rename to the files above.
 
-## ⚙️Docs for developer
+## Custom domain
 
-To contribute new features or customize your deployment furthermore, see [here](https://github.com/lyc8503/UptimeFlare/wiki/How-to-develop).
+`status.libexdb.com` is a custom domain on the `uptimeflare-libex` Pages project, added in the
+Cloudflare dashboard under Workers & Pages, then the project's Custom domains tab.
 
-## New features (TODOs)
+## Working on it
 
-- [x] Specify region for monitors
-- [x] TCP `opened` promise
-- [x] Use apprise to support various notification channels
-- [x] ~~Telegram example~~
-- [x] ~~[Bark](https://bark.day.app) example~~
-- [x] ~~Email notification via Cloudflare Email Workers~~
-- [x] Improve docs by providing simple examples
-- [x] Notification grace period
-- [ ] SSL certificate checks
-- [x] ~~Self-host Dockerfile~~
-- [x] Incident history
-- [x] Improve `checkLocationWorkerRoute` and fix possible `proxy failed`
-- [x] Groups
-- [x] Remove old incidents
-- [x] ~~Known issue~~: `fetch` doesn't support non-standard port (resolved after CF update)
-- [x] Compatibility date update
-- [x] Scheduled Maintenance
-- [x] Add docs for dev
-- [x] Migration to Terraform Cloudflare provider version 5.x
-- [x] Cloudflare D1 database
-- [x] Scheduled maintenances (via IIFE)
-- [x] Simpler config example
-- [x] Upcoming maintenances
-- [x] Universal Webhook upgrade
-- [x] i18n...? (maybe)
-- [ ] ICMP via proxy?
-- [x] Add default UA
-- [x] Customizable footer
-- [x] New header logo
-- [x] Improve CPU time usage
-- [x] Local deployment (docs WIP)
+`dev` is the work branch and changes land on it by PR. `main` deploys, and `dev` reaches it by PR.
+
+```sh
+bash scripts/install-hooks.sh
+```
+
+That installs the commit and push checks: gitleaks, a public-repo check for home-network
+details, and a changelog check.
+
+---
+
+## Credits and licence
+
+Built on [UptimeFlare](https://github.com/lyc8503/UptimeFlare) by
+[lyc8503](https://github.com/lyc8503), under the Apache License 2.0. My changes are under the
+same licence; see [LICENSE](LICENSE) and [NOTICE](NOTICE).

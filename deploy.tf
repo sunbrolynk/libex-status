@@ -16,6 +16,11 @@ variable "CLOUDFLARE_ACCOUNT_ID" {
   type = string
 }
 
+variable "UF_PREFIX" {
+  # read from $TF_VAR_UF_PREFIX
+  type = string
+}
+
 variable "enable_do_migration" {
   type    = bool
   default = false
@@ -23,7 +28,7 @@ variable "enable_do_migration" {
 
 resource "cloudflare_d1_database" "uptimeflare_d1" {
   account_id            = var.CLOUDFLARE_ACCOUNT_ID
-  name                  = "uptimeflare_d1"
+  name                  = "${var.UF_PREFIX}_d1"
   read_replication = {
     mode = "auto"
   }
@@ -31,7 +36,7 @@ resource "cloudflare_d1_database" "uptimeflare_d1" {
 
 resource "cloudflare_workers_script" "uptimeflare_worker" {
   account_id          = var.CLOUDFLARE_ACCOUNT_ID
-  script_name         = "uptimeflare_worker"
+  script_name         = "${var.UF_PREFIX}_worker"
   main_module         = "worker/dist/index.js"
   content_file        = "worker/dist/index.js"
   content_sha256      = filesha256("worker/dist/index.js")
@@ -72,7 +77,7 @@ resource "cloudflare_workers_cron_trigger" "uptimeflare_worker_cron" {
 
 resource "cloudflare_pages_project" "uptimeflare" {
   account_id        = var.CLOUDFLARE_ACCOUNT_ID
-  name              = "uptimeflare"
+  name              = var.UF_PREFIX
   production_branch = "main"
 
   deployment_configs = {

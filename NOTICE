@@ -1,0 +1,10 @@
+Libex Status
+Copyright 2026 SunBroLynk
+
+This product is a modified copy of UptimeFlare
+(https://github.com/lyc8503/UptimeFlare), copyright lyc8503, licensed under the
+Apache License, Version 2.0.
+
+Changes from UptimeFlare: the Cloudflare resource names come from one prefix,
+the monitors, branding and alerts are set for this page, the GitHub Actions are
+pinned by commit, and repo checks and hooks are added.

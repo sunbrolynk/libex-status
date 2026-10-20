@@ -5,19 +5,23 @@ on:
     branches: ['main']
   workflow_dispatch:
 
+env:
+  # Prefix for every Cloudflare resource name, unique per status repo in the account
+  TF_VAR_UF_PREFIX: uptimeflare-libex
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2.0.3
+        uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1 # v2.0.3
         with:
           terraform_version: 1.6.4
 
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3.9.1
         with:
           node-version: 22.x
           cache: 'npm'
@@ -51,7 +55,9 @@ jobs:
       - name: Build worker
         run: |
           cd worker
-          npx wrangler deploy src/index.ts --outdir dist --dry-run
+          npx wrangler deploy src/index.ts --outdir dist --dry-run --define "process.env.DISCORD_WEBHOOK_URL:$(jq -rn 'env.DISCORD_WEBHOOK_URL | tojson')"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       - name: Build page
         run: |
@@ -81,18 +87,18 @@ jobs:
           DO_RESP=$(curl "https://api.cloudflare.com/client/v4/accounts/$TF_VAR_CLOUDFLARE_ACCOUNT_ID/workers/durable_objects/namespaces?per_page=1000" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
 
-          if echo "$DO_RESP" | jq -e '.result[] | select(.script == "uptimeflare_worker" and .class == "RemoteChecker")' > /dev/null; then
-            echo "Existing Durable Object namespace found for uptimeflare_worker RemoteChecker. No migration needed."
+          if echo "$DO_RESP" | jq -e --arg s "${TF_VAR_UF_PREFIX}_worker" '.result[] | select(.script == $s and .class == "RemoteChecker")' > /dev/null; then
+            echo "Existing Durable Object namespace found for ${TF_VAR_UF_PREFIX}_worker RemoteChecker. No migration needed."
           else
-            echo "No existing Durable Object namespace found for uptimeflare_worker RemoteChecker. Need migration."
+            echo "No existing Durable Object namespace found for ${TF_VAR_UF_PREFIX}_worker RemoteChecker. Need migration."
             export TF_VAR_enable_do_migration=true
           fi
 
           echo "Try importing existing resources..."
           terraform import cloudflare_d1_database.uptimeflare_d1 "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/$D1_ID"
-          terraform import cloudflare_workers_script.uptimeflare_worker "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/uptimeflare_worker" || echo "WARNING: Worker script import failed, continuing..."
-          terraform import cloudflare_workers_cron_trigger.uptimeflare_worker_cron "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/uptimeflare_worker" || echo "WARNING: Cron trigger import failed, continuing..."
-          terraform import cloudflare_pages_project.uptimeflare "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/uptimeflare" || echo "WARNING: Pages project import failed, continuing..."
+          terraform import cloudflare_workers_script.uptimeflare_worker "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/${TF_VAR_UF_PREFIX}_worker" || echo "WARNING: Worker script import failed, continuing..."
+          terraform import cloudflare_workers_cron_trigger.uptimeflare_worker_cron "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/${TF_VAR_UF_PREFIX}_worker" || echo "WARNING: Cron trigger import failed, continuing..."
+          terraform import cloudflare_pages_project.uptimeflare "$TF_VAR_CLOUDFLARE_ACCOUNT_ID/$TF_VAR_UF_PREFIX" || echo "WARNING: Pages project import failed, continuing..."
 
           terraform apply -auto-approve -input=false
         env:
@@ -103,7 +109,7 @@ jobs:
       # Currently Terraform Cloudflare provider doesn't support direct upload, use wrangler to upload instead.
       - name: Upload pages
         run: |
-          npx wrangler pages deploy .vercel/output/static --project-name uptimeflare
+          npx wrangler pages deploy .vercel/output/static --project-name "$TF_VAR_UF_PREFIX"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.fetch_account_id.outputs.account_id }}

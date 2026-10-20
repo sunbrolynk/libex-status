@@ -1,0 +1,5 @@
+# The default gitleaks rules. Home-network details are checked by scripts/check-public.sh.
+title = "Status page gitleaks config"
+
+[extend]
+useDefault = true
