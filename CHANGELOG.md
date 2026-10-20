@@ -16,8 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The README badge shows the API's live status, and the README covers adding monitors, alerts,
+  deploying, the custom domain, the first run and upstream updates.
+- Security reports go through GitHub's private vulnerability reporting.
+- The Upstream Sync workflow is disabled.
 - Every Cloudflare resource name comes from the `uptimeflare-libex` prefix, so this page can share
-  an account with my other status pages.
+  an account with my other projects.
 - Every GitHub Action is pinned by commit.
 
 ### Removed
