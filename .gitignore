@@ -38,3 +38,7 @@ next-env.d.ts
 terraform.tfstate*
 
 /.wrangler
+
+# My local lists for check-public.sh; they must never be committed.
+.infra-names
+.blocked-words

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# status-page hook: installed and kept up to date by scripts/install-hooks.sh
+# Blocks a commit that stages a secret, home-network details or writing that isn't mine.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "Scanning staged changes for secrets..."
+bash scripts/check-secrets.sh --staged
+
+echo "Checking staged files..."
+bash scripts/check-public.sh

@@ -2,7 +2,7 @@
 
 echo "Initializing database schema..."
 cd /app
-npx wrangler d1 execute uptimeflare_d1 --file=/app/init.sql
+npx wrangler d1 execute uptimeflare-libex_d1 --file=/app/init.sql
 
 # Start Worker
 echo "Starting Worker..."
