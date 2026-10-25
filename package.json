@@ -37,7 +37,7 @@
     "postcss": "^8.5.29",
     "postcss-preset-mantine": "^1.8.0",
     "postcss-simple-vars": "^7.0.1",
-    "prettier": "3.0.3",
+    "prettier": "3.9.10",
     "typescript": "^5",
     "wrangler": "^4.54.0"
   }
