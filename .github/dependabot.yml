@@ -16,6 +16,33 @@ updates:
     open-pull-requests-limit: 20
     commit-message:
       prefix: "deps"
+    # Majors of these break the next-on-pages build; they wait for the OpenNext move.
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@mantine/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@cloudflare/workers-types"
+        update-types: ["version-update:semver-major"]
+      # 4.108+ wants workers-types 5, which next-on-pages rejects.
+      - dependency-name: "wrangler"
+        versions: [">=4.108.0"]
 
   - package-ecosystem: github-actions
     directory: /
