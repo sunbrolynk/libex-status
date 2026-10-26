@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",
-    "@mantine/core": "^7.1.3",
-    "@mantine/hooks": "^7.1.3",
+    "@mantine/core": "^7.17.8",
+    "@mantine/hooks": "^7.17.8",
     "@tabler/icons-react": "^2.39.0",
     "@types/moment-precise-range-plugin": "^0.2.2",
     "chart.js": "^4.5.1",
