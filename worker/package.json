@@ -13,6 +13,6 @@
     "wrangler": "^4.54.0"
   },
   "dependencies": {
-    "p-limit": "^7.2.0"
+    "p-limit": "^7.3.3"
   }
 }
