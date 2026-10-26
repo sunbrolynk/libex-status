@@ -1,5 +1,5 @@
 import { MonitorState, MonitorTarget } from '@/types/config'
-import { Accordion, Card, Center, Text } from '@mantine/core'
+import { Accordion, Box, Card, Center, Text } from '@mantine/core'
 import MonitorDetail from './MonitorDetail'
 import { pageConfig } from '@/uptime.config'
 import { useEffect, useState } from 'react'
@@ -92,11 +92,9 @@ export default function MonitorList({
                 .filter((monitor) => group[groupName].includes(monitor.id))
                 .sort((a, b) => group[groupName].indexOf(a.id) - group[groupName].indexOf(b.id))
                 .map((monitor) => (
-                  <div key={monitor.id}>
-                    <Card.Section ml="xs" mr="xs">
-                      <MonitorDetail monitor={monitor} state={state} />
-                    </Card.Section>
-                  </div>
+                  <Box key={monitor.id} mx="xs">
+                    <MonitorDetail monitor={monitor} state={state} />
+                  </Box>
                 ))}
             </Accordion.Panel>
           </Accordion.Item>
@@ -106,11 +104,9 @@ export default function MonitorList({
   } else {
     // Ungrouped monitors
     content = monitors.map((monitor) => (
-      <div key={monitor.id}>
-        <Card.Section ml="xs" mr="xs">
-          <MonitorDetail monitor={monitor} state={state} />
-        </Card.Section>
-      </div>
+      <Box key={monitor.id} mx="xs">
+        <MonitorDetail monitor={monitor} state={state} />
+      </Box>
     ))
   }
 
