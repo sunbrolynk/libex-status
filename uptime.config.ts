@@ -1,12 +1,6 @@
 // Don't edit this line
 import { MaintenanceConfig, PageConfig, WorkerConfig } from './types/config'
 
-// Libex's palette over Mantine's variables: orange accent, Libex's dark navy surfaces.
-const theme = `<style>
-:root:root { --mantine-color-blue-filled: #f79320; --mantine-color-blue-filled-hover: #e0821a; --mantine-color-anchor: #d97a10; --mantine-primary-color-filled: #f79320; --mantine-primary-color-filled-hover: #e0821a; }
-:root:root[data-mantine-color-scheme='dark'] { --mantine-color-body: #0f1720; --mantine-color-dark-7: #0f1720; --mantine-color-dark-6: #111b26; --mantine-color-dark-5: #1a2633; --mantine-color-dark-4: #1a2633; --mantine-color-dark-0: #e6edf3; --mantine-color-anchor: #f79320; }
-</style>`
-
 const pageConfig: PageConfig = {
   title: 'Libex Status',
   links: [
@@ -16,8 +10,7 @@ const pageConfig: PageConfig = {
   favicon: '/favicon.png',
   logo: '/logo.png',
   customFooter:
-    theme +
-    '<p style="text-align: center; font-size: 12px; margin-top: 10px;">Status for the public <a href="https://libexdb.com">Libex</a> instance, powered by <a href="https://github.com/lyc8503/UptimeFlare" target="_blank">UptimeFlare</a>.</p>',
+    'Status for the public <a href="https://libexdb.com">Libex</a> instance, powered by <a href="https://github.com/lyc8503/UptimeFlare">UptimeFlare</a>.',
 }
 
 const workerConfig: WorkerConfig = {
