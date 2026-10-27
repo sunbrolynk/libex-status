@@ -31,6 +31,7 @@ export type Notice = {
   kind: 'incident' | 'maintenance'
   title: string
   body?: string
+  monitorIds: string[]
   monitors: string[]
   start: number
   end: number | null
@@ -67,11 +68,9 @@ export function duration(sec: number) {
 }
 
 export const clock = (ms: number) =>
-  new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-export const dateLabel = (ms: number) =>
-  new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+  new Date(ms).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })
 export const dayLabel = (ms: number) =>
-  new Date(ms).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+  new Date(ms).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })
 
 export function describeDay(d: Day) {
   const when = dayLabel(d.start * 1000)
@@ -85,6 +84,7 @@ export function maintenanceNotice(m: MaintenanceConfig, monitors: MonitorTarget[
     kind: 'maintenance',
     title: m.title ?? 'Scheduled maintenance',
     body: m.body,
+    monitorIds: m.monitors ?? [],
     monitors: (m.monitors ?? []).map((id) => monitors.find((t) => t.id === id)?.name ?? id),
     start: new Date(m.start).getTime(),
     end: m.end ? new Date(m.end).getTime() : null,
@@ -150,21 +150,7 @@ export function buildModel(
       }
     })
 
-  const outages: Notice[] = []
-  for (const v of views) {
-    for (const inc of state.incident[v.id]) {
-      if (inc.error[0] === 'dummy') continue
-      outages.push({
-        kind: 'incident',
-        title: `${v.name} unreachable`,
-        body: inc.error[inc.error.length - 1],
-        monitors: [v.name],
-        start: inc.start[0] * 1000,
-        end: inc.end === null ? null : inc.end * 1000,
-      })
-    }
-  }
-  outages.sort((a, b) => b.start - a.start)
+  const outages = outageNotices(state, monitors)
   const planned = maintenances
     .filter((m) => !m.end || new Date(m.end).getTime() >= nowMs)
     .map((m) => maintenanceNotice(m, monitors))
@@ -187,19 +173,39 @@ export function buildModel(
   }
 }
 
+// Every finished or open outage in the monitor state, newest first
+export function outageNotices(state: MonitorState, monitors: MonitorTarget[]): Notice[] {
+  const out: Notice[] = []
+  for (const m of monitors) {
+    for (const inc of state.incident[m.id] ?? []) {
+      if (inc.error[0] === 'dummy') continue
+      out.push({
+        kind: 'incident',
+        title: `${m.name} unreachable`,
+        body: inc.error[inc.error.length - 1],
+        monitorIds: [m.id],
+        monitors: [m.name],
+        start: inc.start[0] * 1000,
+        end: inc.end === null ? null : inc.end * 1000,
+      })
+    }
+  }
+  return out.sort((a, b) => b.start - a.start)
+}
+
 export const ago = (ms: number) => `${duration(Math.max(60, (Date.now() - ms) / 1000))} ago`
 
 export function noticeWhen(n: Notice) {
-  if (n.kind === 'incident')
-    return n.end === null
-      ? `Ongoing for ${duration((Date.now() - n.start) / 1000)}`
-      : `${dayLabel(n.start)} · lasted ${duration(((n.end as number) - n.start) / 1000)}`
   const sameDay = n.end !== null && dayLabel(n.end) === dayLabel(n.start)
   const until =
     n.end === null
       ? ', until further notice'
       : `–${sameDay ? '' : `${dayLabel(n.end)}, `}${clock(n.end)}`
   const span = `${dayLabel(n.start)}, ${clock(n.start)}${until}`
+  if (n.kind === 'incident') {
+    if (n.end === null) return `Ongoing for ${duration((Date.now() - n.start) / 1000)}`
+    return `${span} · lasted ${duration((n.end - n.start) / 1000)}`
+  }
   if (n.start > Date.now()) return `Planned for ${span}`
   return n.end !== null && n.end < Date.now() ? span : `In progress since ${clock(n.start)}`
 }

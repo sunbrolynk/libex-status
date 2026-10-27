@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { MonitorTarget } from '@/types/config'
 import { maintenances } from '@/uptime.config'
-import { maintenanceNotice } from '@/util/libex'
+import { CompactedMonitorStateWrapper, getFromStore } from '@/worker/src/store'
+import { maintenanceNotice, outageNotices } from '@/util/libex'
 import Shell from '@/components/libex/Shell'
 import { NoticeList, Section } from '@/components/libex/StatusIndex'
 
@@ -21,10 +22,17 @@ function shiftMonth(month: string, by: number) {
 
 function monthLabel(month: string) {
   const [year, m] = month.split('-').map(Number)
-  return new Date(year, m - 1).toLocaleDateString([], { month: 'long', year: 'numeric' })
+  return new Date(year, m - 1).toLocaleDateString('en', { month: 'long', year: 'numeric' })
 }
 
-export default function IncidentsPage({ monitors }: { monitors: MonitorTarget[] }) {
+export default function IncidentsPage({
+  compactedStateStr,
+  monitors,
+}: {
+  compactedStateStr: string
+  monitors: MonitorTarget[]
+}) {
+  const state = new CompactedMonitorStateWrapper(compactedStateStr).uncompact()
   const [monitor, setMonitor] = useState('')
   const [month, setMonth] = useState(selectedMonth)
 
@@ -34,13 +42,15 @@ export default function IncidentsPage({ monitors }: { monitors: MonitorTarget[] 
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  const notices = maintenances
+  // Outages from the monitor state beside the configured maintenance, for the chosen month
+  const notices = [
+    ...outageNotices(state, monitors),
+    ...maintenances.map((m) => maintenanceNotice(m, monitors)),
+  ]
     .filter(
-      (m) =>
-        monthKey(new Date(m.start)) === month && (!monitor || (m.monitors ?? []).includes(monitor))
+      (n) => monthKey(new Date(n.start)) === month && (!monitor || n.monitorIds.includes(monitor))
     )
-    .sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime())
-    .map((m) => maintenanceNotice(m, monitors))
+    .sort((a, b) => b.start - a.start)
 
   return (
     <Shell>
@@ -79,7 +89,9 @@ export default function IncidentsPage({ monitors }: { monitors: MonitorTarget[] 
 
 export async function getServerSideProps() {
   const { workerConfig } = await import('@/uptime.config')
+  // Read state as a string from storage, to stay inside the server-side cpu limit
+  const compactedStateStr = await getFromStore(process.env as any, 'state')
   // Only these values reach the client
   const monitors = workerConfig.monitors.map((monitor) => ({ id: monitor.id, name: monitor.name }))
-  return { props: { monitors } }
+  return { props: { compactedStateStr, monitors } }
 }
