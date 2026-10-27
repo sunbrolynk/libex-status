@@ -1,144 +1,97 @@
-import Head from 'next/head'
-
-import { Inter } from 'next/font/google'
-import { MaintenanceConfig, MonitorTarget } from '@/types/config'
-import { maintenances, pageConfig } from '@/uptime.config'
-import Header from '@/components/Header'
-import { Box, Button, Center, Container, Group, Select } from '@mantine/core'
-import Footer from '@/components/Footer'
 import { useEffect, useState } from 'react'
-import MaintenanceAlert from '@/components/MaintenanceAlert'
-import NoIncidentsAlert from '@/components/NoIncidents'
-import { useTranslation } from 'react-i18next'
+import { MonitorTarget } from '@/types/config'
+import { maintenances } from '@/uptime.config'
+import { CompactedMonitorStateWrapper, getFromStore } from '@/worker/src/store'
+import { maintenanceNotice, outageNotices } from '@/util/libex'
+import Shell from '@/components/libex/Shell'
+import { NoticeList, Section } from '@/components/libex/StatusIndex'
 
 export const runtime = 'experimental-edge'
-const inter = Inter({ subsets: ['latin'] })
 
-function getSelectedMonth() {
+const monthKey = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+
+function selectedMonth() {
   const hash = window.location.hash.replace('#', '')
-  if (!hash) {
-    const now = new Date()
-    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
-  }
-  return hash.split('-').splice(0, 2).join('-')
+  return hash ? hash.split('-').slice(0, 2).join('-') : monthKey(new Date())
 }
 
-function filterIncidentsByMonth(
-  incidents: MaintenanceConfig[],
-  monthStr: string,
+function shiftMonth(month: string, by: number) {
+  const [year, m] = month.split('-').map(Number)
+  return monthKey(new Date(year, m - 1 + by))
+}
+
+function monthLabel(month: string) {
+  const [year, m] = month.split('-').map(Number)
+  return new Date(year, m - 1).toLocaleDateString('en', { month: 'long', year: 'numeric' })
+}
+
+export default function IncidentsPage({
+  compactedStateStr,
+  monitors,
+}: {
+  compactedStateStr: string
   monitors: MonitorTarget[]
-): (Omit<MaintenanceConfig, 'monitors'> & { monitors: MonitorTarget[] })[] {
-  return incidents
-    .filter((incident) => {
-      const d = new Date(incident.start)
-      const incidentMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
-      return incidentMonth === monthStr
-    })
-    .map((e) => ({
-      ...e,
-      monitors: (e.monitors || []).map((e) => monitors.find((mon) => mon.id === e)!),
-    }))
-    .sort((a, b) => (new Date(a.start) > new Date(b.start) ? -1 : 1))
-}
-
-function getPrevNextMonth(monthStr: string) {
-  const [year, month] = monthStr.split('-').map(Number)
-  const date = new Date(year, month - 1)
-  const prev = new Date(date)
-  prev.setMonth(prev.getMonth() - 1)
-  const next = new Date(date)
-  next.setMonth(next.getMonth() + 1)
-  return {
-    prev: prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0'),
-    next: next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0'),
-  }
-}
-
-export default function IncidentsPage({ monitors }: { monitors: MonitorTarget[] }) {
-  const { t } = useTranslation('common')
-  const [selectedMonitor, setSelectedMonitor] = useState<string | null>('')
-  const [selectedMonth, setSelectedMonth] = useState(getSelectedMonth())
+}) {
+  const state = new CompactedMonitorStateWrapper(compactedStateStr).uncompact()
+  const [monitor, setMonitor] = useState('')
+  const [month, setMonth] = useState(selectedMonth)
 
   useEffect(() => {
-    const onHashChange = () => setSelectedMonth(getSelectedMonth())
+    const onHashChange = () => setMonth(selectedMonth())
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  const filteredIncidents = filterIncidentsByMonth(maintenances, selectedMonth, monitors)
-  const monitorFilteredIncidents = selectedMonitor
-    ? filteredIncidents.filter((i) => i.monitors.find((e) => e.id === selectedMonitor))
-    : filteredIncidents
-
-  const { prev, next } = getPrevNextMonth(selectedMonth)
-
-  const monitorOptions = [
-    { value: '', label: t('All') },
-    ...monitors.map((monitor) => ({
-      value: monitor.id,
-      label: monitor.name,
-    })),
+  // Outages from the monitor state beside the configured maintenance, for the chosen month
+  const notices = [
+    ...outageNotices(state, monitors),
+    ...maintenances.map((m) => maintenanceNotice(m, monitors)),
   ]
+    .filter(
+      (n) => monthKey(new Date(n.start)) === month && (!monitor || n.monitorIds.includes(monitor))
+    )
+    .sort((a, b) => b.start - a.start)
 
   return (
-    <>
-      <Head>
-        <title>{pageConfig.title}</title>
-        <link rel="icon" href={pageConfig.favicon ?? '/favicon.png'} />
-      </Head>
-
-      <main className={inter.className}>
-        <Header
-          style={{
-            marginBottom: '40px',
-          }}
-        />
-        <Center>
-          <Container size="md" style={{ width: '100%' }}>
-            <Group justify="end" mb="md">
-              <Select
-                placeholder={t('Select monitor')}
-                data={monitorOptions}
-                value={selectedMonitor}
-                onChange={setSelectedMonitor}
-                clearable
-                style={{ maxWidth: 300, float: 'right' }}
-              />
-            </Group>
-            <Box>
-              {monitorFilteredIncidents.length === 0 ? (
-                <NoIncidentsAlert />
-              ) : (
-                monitorFilteredIncidents.map((incident, i) => (
-                  <MaintenanceAlert key={i} maintenance={incident} />
-                ))
-              )}
-            </Box>
-            <Group justify="space-between" mt="md">
-              <Button variant="default" onClick={() => (window.location.hash = prev)}>
-                {t('Backwards')}
-              </Button>
-              <Box style={{ alignSelf: 'center', fontWeight: 500, fontSize: 18 }}>
-                {selectedMonth}
-              </Box>
-              <Button variant="default" onClick={() => (window.location.hash = next)}>
-                {t('Forward')}
-              </Button>
-            </Group>
-          </Container>
-        </Center>
-        <Footer />
-      </main>
-    </>
+    <Shell>
+      <Section n={1} title="Incidents and maintenance" aside={monthLabel(month)}>
+        <div className="c-controls">
+          <div className="c-months">
+            <button type="button" onClick={() => (window.location.hash = shiftMonth(month, -1))}>
+              ← Earlier
+            </button>
+            <span aria-live="polite">{monthLabel(month)}</span>
+            <button type="button" onClick={() => (window.location.hash = shiftMonth(month, 1))}>
+              Later →
+            </button>
+          </div>
+          <label>
+            <span className="lx-sr">Service</span>
+            <select value={monitor} onChange={(e) => setMonitor(e.target.value)}>
+              <option value="">All services</option>
+              {monitors.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {notices.length === 0 ? (
+          <p className="c-empty">Nothing recorded for {monthLabel(month)}.</p>
+        ) : (
+          <NoticeList notices={notices} />
+        )}
+      </Section>
+    </Shell>
   )
 }
 
 export async function getServerSideProps() {
   const { workerConfig } = await import('@/uptime.config')
-  // Only present these values to client
-  const monitors: MonitorTarget[] = workerConfig.monitors.map((monitor) => ({
-    id: monitor.id,
-    name: monitor.name,
-  })) as MonitorTarget[]
-  return { props: { monitors } }
+  // Read state as a string from storage, to stay inside the server-side cpu limit
+  const compactedStateStr = await getFromStore(process.env as any, 'state')
+  // Only these values reach the client
+  const monitors = workerConfig.monitors.map((monitor) => ({ id: monitor.id, name: monitor.name }))
+  return { props: { compactedStateStr, monitors } }
 }
