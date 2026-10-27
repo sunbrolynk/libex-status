@@ -23,7 +23,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Every Cloudflare resource name comes from the `uptimeflare-libex` prefix, so this page can share
   an account with my other projects.
 - Every GitHub Action is pinned by commit.
+- The status page and the incidents page are rebuilt as a book index: numbered sections for the
+  status, notices, services and the past 30 days, a 90-day strip per service with a tooltip for each
+  day, a response-time panel per service, and a light and dark theme that follows the system and
+  remembers a manual switch.
+- The logo has a lighter version for the dark theme.
 
 ### Removed
 
 - The Chinese README and the issue translation workflow.
+- The page translations. The page is English only now.
+- Mantine, Chart.js, moment, i18next and the Tabler icons. The page draws its own icons and
+  charts, so it ships about half the JavaScript it did.
