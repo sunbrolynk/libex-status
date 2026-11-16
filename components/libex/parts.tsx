@@ -5,6 +5,7 @@ import { Day, Status, clock, describeDay } from '@/util/libex'
 
 const paths = {
   up: 'M5 12.5l4.2 4.2L19 7',
+  degraded: 'M12 6.5v7M12 17v.5',
   down: 'M7 7l10 10M17 7L7 17',
   maintenance:
     'M14.7 6.3a4 4 0 0 0-5.4 5.1L4 16.7 7.3 20l5.3-5.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
@@ -32,6 +33,7 @@ export function Icon({ name, size = 16 }: { name: keyof typeof paths; size?: num
 
 export const STATUS_WORD: Record<Status, string> = {
   up: 'Operational',
+  degraded: 'Slow',
   down: 'Down',
   maintenance: 'Maintenance',
 }

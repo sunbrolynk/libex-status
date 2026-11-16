@@ -6,7 +6,7 @@
     "deploy": "wrangler deploy",
     "dev": "wrangler dev --test-scheduled --persist-to ../.wrangler/state",
     "start": "wrangler dev",
-    "test": "esbuild test/interval.test.ts --bundle --platform=node --format=esm --alias:cloudflare:workers=./test/cloudflare-workers.ts --external:cloudflare:sockets --outfile=node_modules/.cache/test/interval.test.mjs --log-level=warning && node node_modules/.cache/test/interval.test.mjs"
+    "test": "esbuild test/*.test.ts --bundle --platform=node --format=esm --alias:cloudflare:workers=./test/cloudflare-workers.ts --external:cloudflare:sockets --outdir=node_modules/.cache/test --out-extension:.js=.mjs --log-level=warning && for f in node_modules/.cache/test/*.test.mjs; do node $f || exit 1; done"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",

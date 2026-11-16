@@ -42,6 +42,9 @@ const workerConfig: WorkerConfig = {
       timeout: 20000,
       // Each check is a live Audible search, so it runs less often than the rest
       intervalMinutes: 5,
+      // A live Audible search answers in about 1.5 to 2 s and up to about 3.3 s while working, so
+      // only a crawl past 6 s counts as degraded
+      slowMs: 6000,
     },
     {
       id: 'db_stats',
@@ -77,7 +80,10 @@ const workerConfig: WorkerConfig = {
         : undefined,
     ].filter((w) => w !== undefined),
     timeZone: 'America/Denver',
-    gracePeriod: 5,
+    // A failure is an outage only past 3 minutes: the alert waits this long, and the page leaves
+    // shorter failures off the bars, the notices and the status. Search, checked every 5 minutes,
+    // waits for its next check, at 5 minutes.
+    gracePeriod: 3,
     // Down and recovery only, not every change of error text while it's down
     skipErrorChangeNotification: true,
   },

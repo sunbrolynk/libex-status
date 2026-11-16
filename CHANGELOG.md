@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `npm test` in `worker` runs the worker's tests, and the Checks workflow runs them too.
 - Gotify alerts for downtime and recovery, from the `GOTIFY_URL` and `GOTIFY_TOKEN` repo secrets.
   The token goes in the `X-Gotify-Key` header, not the URL.
+- A Slow status for a monitor whose last two readings are both over 3000 ms, or its own `slowMs`
+  (6000 ms for Search, which answers in about 1.5 to 2 s), with "Some services are slow" as the
+  overall state when none is down. One slow answer colours nothing.
 
 ### Changed
 
@@ -40,6 +43,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   length and service, beside the scheduled maintenance.
 - The worker drops the stored history of a monitor removed from the config, so it no longer
   reaches every visitor of the page.
+- A failure only counts as an outage once it has lasted 3 minutes, on the page, the incidents
+  page, `/api/data`, `/api/badge` and the alerts, instead of every failed check showing as down
+  and logging an incident. Down alerts come at 3 minutes instead of 5.
+- Search's grace period rounds up to its next check, 5 minutes, so its down alert lands on a check
+  instead of falling between them. One failed Search check shows and sends nothing.
+- `/api/data` reports a monitor's latency as `null` while its last incident is open, instead of the
+  failed check's timeout, and counts `up` and `down` on the same rule as each monitor.
 
 ### Removed
 
@@ -52,6 +62,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Down alerts now send when a monitor is still down at the end of the grace period. Before, with
   error-change alerts turned off, every down alert was dropped and only the recovery arrived.
+- The check that sends a down alert is always saved, even inside the write cooldown, so the page
+  shows the outage the alert announces.
 
 ### Security
 

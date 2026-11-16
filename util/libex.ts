@@ -1,8 +1,10 @@
 import { MaintenanceConfig, MonitorState, MonitorTarget } from '@/types/config'
+import { isOutage } from '@/util/outage'
+import { effectiveGrace } from '@/worker/src/alerts'
 
 export type Level = 'up' | 'minor' | 'major' | 'down' | 'none'
-export type Status = 'up' | 'down' | 'maintenance'
-export type Overall = 'up' | 'partial' | 'down'
+export type Status = 'up' | 'degraded' | 'down' | 'maintenance'
+export type Overall = 'up' | 'degraded' | 'partial' | 'down'
 
 export type Day = {
   start: number
@@ -48,6 +50,8 @@ export type Model = {
 }
 
 const DAY = 86400
+// Below this, a monitor's response time is jitter, not a problem
+export const SLOW_MS = 3000
 const overlap = (a1: number, a2: number, b1: number, b2: number) =>
   Math.max(0, Math.min(a2, b2) - Math.max(a1, b1))
 
@@ -95,6 +99,7 @@ export function buildModel(
   state: MonitorState,
   monitors: MonitorTarget[],
   maintenances: MaintenanceConfig[],
+  graceMin?: number,
   nowMs = Date.now()
 ): Model {
   const now = Math.round(nowMs / 1000)
@@ -110,7 +115,11 @@ export function buildModel(
   const views: MonitorView[] = monitors
     .filter((m) => state.incident[m.id]?.length && state.latency[m.id])
     .map((m) => {
-      const incidents = state.incident[m.id]
+      const grace = effectiveGrace(graceMin, m.intervalMinutes)
+      const incidents = state.incident[m.id].filter(
+        // The first record is the monitor's own start marker
+        (inc) => inc.error[0] === 'dummy' || isOutage(inc, state.lastUpdate, grace)
+      )
       const born = incidents[0].start[0]
       const days: Day[] = []
       for (let i = 89; i >= 0; i--) {
@@ -134,15 +143,21 @@ export function buildModel(
       const last = incidents[incidents.length - 1]
       const isDown = last.end === null
       const pings = state.latency[m.id].map((p) => p.ping).filter((p) => p > 0)
+      // The last two stored readings since the last failure ended, so one slow answer doesn't
+      // count and a failure's timeout reading never does
+      const lastEnd = state.incident[m.id][state.incident[m.id].length - 1].end
+      const since = state.latency[m.id].filter((p) => p.time >= (lastEnd ?? Infinity))
+      const slow = since.length >= 2 && since.slice(-2).every((p) => p.ping > (m.slowMs ?? SLOW_MS))
       return {
         id: m.id,
         name: m.name,
         link: m.statusPageLink,
         tooltip: m.tooltip,
         hideLatencyChart: m.hideLatencyChart,
-        status: resting.has(m.id) ? 'maintenance' : isDown ? 'down' : 'up',
+        status: resting.has(m.id) ? 'maintenance' : isDown ? 'down' : slow ? 'degraded' : 'up',
         uptime: Math.floor(((now - born - down) / (now - born)) * 10000) / 100,
-        latest: isDown ? null : pings[pings.length - 1] ?? null,
+        // A failure inside the grace period has no real reading, only its timeout
+        latest: isDown || lastEnd === null ? null : pings[pings.length - 1] ?? null,
         avg: pings.length ? Math.round(pings.reduce((a, b) => a + b, 0) / pings.length) : null,
         days,
         downSince: isDown ? last.start[0] * 1000 : undefined,
@@ -150,13 +165,20 @@ export function buildModel(
       }
     })
 
-  const outages = outageNotices(state, monitors)
+  const outages = outageNotices(state, monitors, graceMin)
   const planned = maintenances
     .filter((m) => !m.end || new Date(m.end).getTime() >= nowMs)
     .map((m) => maintenanceNotice(m, monitors))
 
   const downCount = views.filter((v) => v.status === 'down').length
-  const overall: Overall = downCount === 0 ? 'up' : downCount === views.length ? 'down' : 'partial'
+  const overall: Overall =
+    downCount === views.length && downCount > 0
+      ? 'down'
+      : downCount > 0
+      ? 'partial'
+      : views.some((v) => v.status === 'degraded')
+      ? 'degraded'
+      : 'up'
   return {
     monitors: views,
     overall,
@@ -165,6 +187,8 @@ export function buildModel(
         ? 'All systems operational'
         : overall === 'down'
         ? 'Major outage'
+        : overall === 'degraded'
+        ? 'Some services are slow'
         : 'Partial outage',
     upCount: views.length - downCount,
     notices: [...outages.filter((o) => o.end === null), ...planned],
@@ -174,11 +198,16 @@ export function buildModel(
 }
 
 // Every finished or open outage in the monitor state, newest first
-export function outageNotices(state: MonitorState, monitors: MonitorTarget[]): Notice[] {
+export function outageNotices(
+  state: MonitorState,
+  monitors: MonitorTarget[],
+  graceMin?: number
+): Notice[] {
   const out: Notice[] = []
   for (const m of monitors) {
+    const grace = effectiveGrace(graceMin, m.intervalMinutes)
     for (const inc of state.incident[m.id] ?? []) {
-      if (inc.error[0] === 'dummy') continue
+      if (inc.error[0] === 'dummy' || !isOutage(inc, state.lastUpdate, grace)) continue
       out.push({
         kind: 'incident',
         title: `${m.name} unreachable`,

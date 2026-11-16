@@ -83,6 +83,7 @@ html:has(.lx-c[data-theme='dark']) {
   --ok-text: #1f6b3f;
   --bad-text: #a61f15;
   --maint-text: #2f4f9c;
+  --minor-text: #8a5f00;
   --bad-tint: #fbeceb;
   --maint-tint: #edf1fb;
   --tip-bg: #1b232c;
@@ -97,6 +98,7 @@ html:has(.lx-c[data-theme='dark']) {
   --ok-text: #6fcb97;
   --bad-text: #ff8a7e;
   --maint-text: #a9bcf2;
+  --minor-text: #d9ad3c;
   --bad-tint: #2e1c1f;
   --maint-tint: #1b2338;
   --tip-bg: #f1ece2;
@@ -274,6 +276,9 @@ html:has(.lx-c[data-theme='dark']) {
 .c-spine-up {
   fill: var(--ok);
 }
+.c-spine-degraded {
+  fill: var(--minor);
+}
 .c-spine-down {
   fill: var(--bad);
 }
@@ -369,6 +374,9 @@ html:has(.lx-c[data-theme='dark']) {
 .c-lede strong {
   font-weight: 600;
   color: var(--ok-text);
+}
+.c-lede[data-overall='degraded'] strong {
+  color: var(--minor-text);
 }
 .c-lede[data-overall='partial'] strong,
 .c-lede[data-overall='down'] strong {
@@ -467,6 +475,9 @@ html:has(.lx-c[data-theme='dark']) {
 }
 .c-index > li[data-status='down'] .c-state {
   color: var(--bad-text);
+}
+.c-index > li[data-status='degraded'] .c-state {
+  color: var(--minor-text);
 }
 .c-index > li[data-status='maintenance'] .c-state {
   color: var(--maint-text);

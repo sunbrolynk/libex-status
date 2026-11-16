@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { MonitorTarget } from '@/types/config'
 import { maintenances } from '@/uptime.config'
-import { CompactedMonitorStateWrapper, getFromStore } from '@/worker/src/store'
+import { CompactedMonitorStateWrapper } from '@/worker/src/store'
+import { statusPageProps } from '@/util/props'
 import { buildModel } from '@/util/libex'
 import Shell, { fontVars } from '@/components/libex/Shell'
 import StatusIndex, { ServiceEntry } from '@/components/libex/StatusIndex'
@@ -11,9 +12,11 @@ export const runtime = 'experimental-edge'
 export default function Home({
   compactedStateStr,
   monitors,
+  graceMin,
 }: {
   compactedStateStr: string
   monitors: MonitorTarget[]
+  graceMin: number | null
 }) {
   const state = new CompactedMonitorStateWrapper(compactedStateStr).uncompact()
   const [open, setOpen] = useState(true)
@@ -28,7 +31,7 @@ export default function Home({
     )
   }
 
-  const model = buildModel(state, monitors, maintenances)
+  const model = buildModel(state, monitors, maintenances, graceMin ?? undefined)
 
   // A monitor id in the URL hash shows just that monitor, for embedding in an iframe
   const monitorId = window.location.hash.substring(1)
@@ -57,19 +60,4 @@ export default function Home({
   )
 }
 
-export async function getServerSideProps() {
-  const { workerConfig } = await import('@/uptime.config')
-  // Read state as a string from storage, to stay inside the server-side cpu limit
-  const compactedStateStr = await getFromStore(process.env as any, 'state')
-
-  // Only these values reach the client
-  const monitors = workerConfig.monitors.map((monitor) => ({
-    id: monitor.id,
-    name: monitor.name,
-    tooltip: monitor.tooltip ?? null,
-    statusPageLink: monitor.statusPageLink ?? null,
-    hideLatencyChart: monitor.hideLatencyChart ?? null,
-  }))
-
-  return { props: { compactedStateStr, monitors } }
-}
+export const getServerSideProps = statusPageProps
