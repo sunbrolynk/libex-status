@@ -31,6 +31,8 @@ checks each target every minute and a Cloudflare Pages site shows the history.
 |---|---|---|---|
 | API | `api` | https://libexdb.com/ | it answers 200 |
 | API health | `health` | https://libexdb.com/health | it answers 200 with `"status":"ok"` |
+| Search (US) | `libex-search-us` | https://libexdb.com/search?region=us&title=the%20hobbit&limit=1 | it answers 200 within 20 seconds |
+| Search (UK) | `libex-search-uk` | https://libexdb.com/search?region=uk&title=the%20hobbit&limit=1 | it answers 200 within 20 seconds |
 | Database stats | `db_stats` | https://libexdb.com/db/stats | it answers 200 |
 
 ## Adding or removing a monitor
@@ -42,9 +44,12 @@ PR into `dev` like any other change.
 
 ## Alerts
 
-Downtime and recovery alerts go to a Discord channel through a webhook, after a monitor has been
-down for 5 minutes. Changes in the error text while it's still down don't send another alert.
-With no `DISCORD_WEBHOOK_URL` secret set, no alerts are sent.
+Downtime and recovery alerts go to a Discord channel and to Gotify through webhooks, after a
+monitor has been down for 5 minutes. Changes in the error text while it's still down don't send
+another alert. Each webhook is skipped when its secret isn't set.
+
+The search monitors catch what the health check can't: `/health` stays ok when Audible blocks
+the API's VPN exit, while every search fails.
 
 ## Secrets
 
@@ -53,9 +58,10 @@ With no `DISCORD_WEBHOOK_URL` secret set, no alerts are sent.
 | `CLOUDFLARE_API_TOKEN` | Cloudflare token with Workers, Pages and D1 edit rights |
 | `CLOUDFLARE_ACCOUNT_ID` | Optional; looked up from the token when it's missing |
 | `DISCORD_WEBHOOK_URL` | Discord webhook for alerts |
+| `GOTIFY_WEBHOOK_URL` | Gotify message URL with the app token, `https://<gotify>/message?token=<app-token>` |
 
-The webhook URL is inlined into the worker bundle at build time with `wrangler --define`, so it
-never sits in the repo and never reaches the page.
+The webhook URLs are inlined into the worker bundle at build time with `wrangler --define`, so they
+never sit in the repo and never reach the page.
 
 ## Deploying
 

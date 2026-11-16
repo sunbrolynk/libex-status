@@ -55,9 +55,10 @@ jobs:
       - name: Build worker
         run: |
           cd worker
-          npx wrangler deploy src/index.ts --outdir dist --dry-run --define "process.env.DISCORD_WEBHOOK_URL:$(jq -rn 'env.DISCORD_WEBHOOK_URL | tojson')"
+          npx wrangler deploy src/index.ts --outdir dist --dry-run --define "process.env.DISCORD_WEBHOOK_URL:$(jq -rn 'env.DISCORD_WEBHOOK_URL | tojson')" --define "process.env.GOTIFY_WEBHOOK_URL:$(jq -rn 'env.GOTIFY_WEBHOOK_URL | tojson')"
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GOTIFY_WEBHOOK_URL: ${{ secrets.GOTIFY_WEBHOOK_URL }}
 
       - name: Build page
         run: |

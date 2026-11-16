@@ -34,6 +34,22 @@ const workerConfig: WorkerConfig = {
       timeout: 10000,
     },
     {
+      id: 'libex-search-us',
+      name: 'Search (US)',
+      method: 'GET',
+      target: 'https://libexdb.com/search?region=us&title=the%20hobbit&limit=1',
+      expectedCodes: [200],
+      timeout: 20000,
+    },
+    {
+      id: 'libex-search-uk',
+      name: 'Search (UK)',
+      method: 'GET',
+      target: 'https://libexdb.com/search?region=uk&title=the%20hobbit&limit=1',
+      expectedCodes: [200],
+      timeout: 20000,
+    },
+    {
       id: 'db_stats',
       name: 'Database stats',
       method: 'GET',
@@ -44,15 +60,27 @@ const workerConfig: WorkerConfig = {
     },
   ],
   notification: {
-    // Discord webhook from the DISCORD_WEBHOOK_URL repo secret, inlined when deploy.yml builds the worker
-    webhook: process.env.DISCORD_WEBHOOK_URL
-      ? {
-          url: process.env.DISCORD_WEBHOOK_URL,
-          payloadType: 'json',
-          payload: { content: '$MSG' },
-          timeout: 10000,
-        }
-      : undefined,
+    // Discord and Gotify webhooks from the DISCORD_WEBHOOK_URL and GOTIFY_WEBHOOK_URL repo secrets,
+    // inlined when deploy.yml builds the worker; each is skipped when its secret is unset
+    webhook: [
+      process.env.DISCORD_WEBHOOK_URL
+        ? {
+            url: process.env.DISCORD_WEBHOOK_URL,
+            payloadType: 'json' as const,
+            payload: { content: '$MSG' },
+            timeout: 10000,
+          }
+        : undefined,
+      process.env.GOTIFY_WEBHOOK_URL
+        ? {
+            url: process.env.GOTIFY_WEBHOOK_URL,
+            method: 'POST' as const,
+            payloadType: 'json' as const,
+            payload: { title: 'Libex status', message: '$MSG', priority: 8 },
+            timeout: 10000,
+          }
+        : undefined,
+    ].filter((w) => w !== undefined),
     timeZone: 'America/Denver',
     gracePeriod: 5,
     // Down and recovery only, not every change of error text while it's down

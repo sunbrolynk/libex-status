@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Discord alerts for downtime and recovery, from the `DISCORD_WEBHOOK_URL` repo secret.
 - Commit and push hooks and a Checks workflow for secrets, home-network details and the changelog.
 - Dependabot for npm and GitHub Actions, one PR per package after a 14-day cooldown.
+- Search monitors for the US and UK regions, which go down when Audible blocks the API's searches
+  while its health check still says ok.
+- Gotify alerts for downtime and recovery, from the `GOTIFY_WEBHOOK_URL` repo secret.
 
 ### Changed
 
@@ -37,3 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The page translations. The page is in English to match Libex, which has no other languages.
 - Mantine, Chart.js, moment, i18next and the Tabler icons. The page draws its own icons and
   charts, so it ships about half the JavaScript it did.
+
+### Security
+
+- Webhook alerts log only the webhook's host and path, so the Discord and Gotify tokens stay out
+  of the worker logs.
