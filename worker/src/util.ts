@@ -79,6 +79,12 @@ function templateWebhookPlayload(payload: any, message: string) {
   }
 }
 
+// The token sits in the query string, or in the path for Discord, so logs get only the rest
+function webhookLogTarget(url: string) {
+  const u = new URL(url)
+  return /(^|\.)discord(app)?\.com$/.test(u.hostname) ? u.host : u.origin + u.pathname
+}
+
 async function webhookNotify(webhook: WebhookConfig, message: string) {
   if (Array.isArray(webhook)) {
     for (const w of webhook) {
@@ -87,10 +93,13 @@ async function webhookNotify(webhook: WebhookConfig, message: string) {
     return
   }
 
-  console.log(
-    'Sending webhook notification: ' + JSON.stringify(message) + ' to webhook ' + webhook.url
-  )
   try {
+    console.log(
+      'Sending webhook notification: ' +
+        JSON.stringify(message) +
+        ' to webhook ' +
+        webhookLogTarget(webhook.url)
+    )
     let url = webhook.url
     let method = webhook.method
     let headers = new Headers(webhook.headers as any)
@@ -128,9 +137,9 @@ async function webhookNotify(webhook: WebhookConfig, message: string) {
     }
 
     console.log(
-      `Webhook finalized parameters: ${method} ${url}, headers ${JSON.stringify(
-        Object.fromEntries(headers.entries())
-      )}, body ${JSON.stringify(body)}`
+      `Webhook finalized parameters: ${method} ${webhookLogTarget(url)}, body ${JSON.stringify(
+        body
+      )}`
     )
     const resp = await fetchTimeout(url, webhook.timeout ?? 5000, { method, headers, body })
 
