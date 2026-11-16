@@ -45,6 +45,8 @@ export type MonitorTarget = {
   responseForbiddenKeyword?: string
   checkProxy?: string
   checkProxyFallback?: boolean
+  // Check only on minutes divisible by this; between checks the monitor keeps its last state
+  intervalMinutes?: number
 }
 
 export type WorkerConfig<TEnv = Env> = {

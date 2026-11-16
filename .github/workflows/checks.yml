@@ -31,3 +31,9 @@ jobs:
       - name: Check every config change has a changelog entry
         if: github.event_name == 'pull_request'
         run: bash scripts/check-changelog.sh "origin/${GITHUB_BASE_REF}..HEAD"
+
+      - name: Run the worker tests
+        run: |
+          cd worker
+          npm ci --ignore-scripts
+          npm test
