@@ -60,8 +60,8 @@ const workerConfig: WorkerConfig = {
     },
   ],
   notification: {
-    // Discord and Gotify webhooks from the DISCORD_WEBHOOK_URL and GOTIFY_WEBHOOK_URL repo secrets,
-    // inlined when deploy.yml builds the worker; each is skipped when its secret is unset
+    // Discord and Gotify webhooks from the DISCORD_WEBHOOK_URL, GOTIFY_URL and GOTIFY_TOKEN repo
+    // secrets, inlined when deploy.yml builds the worker; each is skipped when its secrets are unset
     webhook: [
       process.env.DISCORD_WEBHOOK_URL
         ? {
@@ -71,10 +71,11 @@ const workerConfig: WorkerConfig = {
             timeout: 10000,
           }
         : undefined,
-      process.env.GOTIFY_WEBHOOK_URL
+      process.env.GOTIFY_URL && process.env.GOTIFY_TOKEN
         ? {
-            url: process.env.GOTIFY_WEBHOOK_URL,
+            url: process.env.GOTIFY_URL,
             method: 'POST' as const,
+            headers: { 'X-Gotify-Key': process.env.GOTIFY_TOKEN },
             payloadType: 'json' as const,
             payload: { title: 'Libex status', message: '$MSG', priority: 8 },
             timeout: 10000,
