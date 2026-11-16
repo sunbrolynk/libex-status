@@ -1,6 +1,8 @@
 import { maintenances, workerConfig } from '@/uptime.config'
 import { NextRequest } from 'next/server'
 import { CompactedMonitorStateWrapper, getFromStore } from '@/worker/src/store'
+import { effectiveGrace } from '@/worker/src/alerts'
+import { isDownNow } from '@/util/outage'
 
 export const runtime = 'edge'
 
@@ -31,19 +33,26 @@ export default async function handler(req: NextRequest): Promise<Response> {
       compactedState.incidentLen(monitor.id) - 1
     )
 
-    const isUp = lastIncident?.end !== null
+    const isUp = !isDownNow(
+      lastIncident,
+      compactedState.data.lastUpdate,
+      effectiveGrace(workerConfig.notification?.gracePeriod, monitor.intervalMinutes)
+    )
     const latency = compactedState.getLastLatency(monitor.id)
     monitors[monitor.id] = {
       up: isUp,
-      latency: latency.ping,
+      // A failure inside the grace period has no real reading, only its timeout
+      latency: lastIncident.end === null ? null : latency.ping,
       location: latency.loc,
       message: isUp ? 'OK' : lastIncident?.error[lastIncident.error.length - 1],
     }
   }
 
+  // Counted on the same grace rule as each monitor, not the worker's raw check results
+  const ups = Object.values(monitors).filter((m: any) => m.up).length
   let ret = {
-    up: compactedState.data.overallUp,
-    down: compactedState.data.overallDown,
+    up: ups,
+    down: workerConfig.monitors.length - ups,
     updatedAt: compactedState.data.lastUpdate,
     monitors,
     maintenances,

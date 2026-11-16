@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { MonitorTarget } from '@/types/config'
 import { maintenances } from '@/uptime.config'
-import { CompactedMonitorStateWrapper, getFromStore } from '@/worker/src/store'
+import { CompactedMonitorStateWrapper } from '@/worker/src/store'
+import { statusPageProps } from '@/util/props'
 import { maintenanceNotice, outageNotices } from '@/util/libex'
 import Shell from '@/components/libex/Shell'
 import { NoticeList, Section } from '@/components/libex/StatusIndex'
@@ -28,9 +29,11 @@ function monthLabel(month: string) {
 export default function IncidentsPage({
   compactedStateStr,
   monitors,
+  graceMin,
 }: {
   compactedStateStr: string
   monitors: MonitorTarget[]
+  graceMin: number | null
 }) {
   const state = new CompactedMonitorStateWrapper(compactedStateStr).uncompact()
   const [monitor, setMonitor] = useState('')
@@ -44,7 +47,7 @@ export default function IncidentsPage({
 
   // Outages from the monitor state beside the configured maintenance, for the chosen month
   const notices = [
-    ...outageNotices(state, monitors),
+    ...outageNotices(state, monitors, graceMin ?? undefined),
     ...maintenances.map((m) => maintenanceNotice(m, monitors)),
   ]
     .filter(
@@ -87,11 +90,4 @@ export default function IncidentsPage({
   )
 }
 
-export async function getServerSideProps() {
-  const { workerConfig } = await import('@/uptime.config')
-  // Read state as a string from storage, to stay inside the server-side cpu limit
-  const compactedStateStr = await getFromStore(process.env as any, 'state')
-  // Only these values reach the client
-  const monitors = workerConfig.monitors.map((monitor) => ({ id: monitor.id, name: monitor.name }))
-  return { props: { compactedStateStr, monitors } }
-}
+export const getServerSideProps = statusPageProps
