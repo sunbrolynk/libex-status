@@ -46,7 +46,7 @@ PR into `dev` like any other change.
 
 Downtime and recovery alerts go to a Discord channel and to Gotify through webhooks, after a
 monitor has been down for 5 minutes. Changes in the error text while it's still down don't send
-another alert. Each webhook is skipped when its secret isn't set.
+another alert. Each webhook is skipped when any of its secrets isn't set.
 
 The search monitors catch what the health check can't: `/health` stays ok when Audible blocks
 the API's VPN exit, while every search fails.
@@ -58,10 +58,12 @@ the API's VPN exit, while every search fails.
 | `CLOUDFLARE_API_TOKEN` | Cloudflare token with Workers, Pages and D1 edit rights |
 | `CLOUDFLARE_ACCOUNT_ID` | Optional; looked up from the token when it's missing |
 | `DISCORD_WEBHOOK_URL` | Discord webhook for alerts |
-| `GOTIFY_WEBHOOK_URL` | Gotify message URL with the app token, `https://<gotify>/message?token=<app-token>` |
+| `GOTIFY_URL` | Gotify message URL with no token, `https://<gotify>/message` |
+| `GOTIFY_TOKEN` | Gotify app token, sent in the `X-Gotify-Key` header |
 
-The webhook URLs are inlined into the worker bundle at build time with `wrangler --define`, so they
-never sit in the repo and never reach the page.
+These secrets are inlined into the worker bundle at build time with `wrangler --define`, so they
+never sit in the repo and never reach the page. The worker logs only a webhook's host and path,
+never its query string or headers.
 
 ## Deploying
 

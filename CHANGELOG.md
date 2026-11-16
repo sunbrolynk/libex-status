@@ -15,7 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Dependabot for npm and GitHub Actions, one PR per package after a 14-day cooldown.
 - Search monitors for the US and UK regions, which go down when Audible blocks the API's searches
   while its health check still says ok.
-- Gotify alerts for downtime and recovery, from the `GOTIFY_WEBHOOK_URL` repo secret.
+- Gotify alerts for downtime and recovery, from the `GOTIFY_URL` and `GOTIFY_TOKEN` repo secrets.
+  The token goes in the `X-Gotify-Key` header, not the URL.
 
 ### Changed
 
@@ -43,5 +44,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
-- Webhook alerts log only the webhook's host and path, so the Discord and Gotify tokens stay out
-  of the worker logs.
+- Webhook alerts log only the webhook's host and path, never its headers, so the Discord and
+  Gotify tokens stay out of the worker logs.
