@@ -34,20 +34,14 @@ const workerConfig: WorkerConfig = {
       timeout: 10000,
     },
     {
-      id: 'libex-search-us',
-      name: 'Search (US)',
+      id: 'libex-search',
+      name: 'Search',
       method: 'GET',
       target: 'https://libexdb.com/search?region=us&title=the%20hobbit&limit=1',
       expectedCodes: [200],
       timeout: 20000,
-    },
-    {
-      id: 'libex-search-uk',
-      name: 'Search (UK)',
-      method: 'GET',
-      target: 'https://libexdb.com/search?region=uk&title=the%20hobbit&limit=1',
-      expectedCodes: [200],
-      timeout: 20000,
+      // Each check is a live Audible search, so it runs less often than the rest
+      intervalMinutes: 5,
     },
     {
       id: 'db_stats',

@@ -30,8 +30,15 @@ const Worker = {
     let checkQueue: Promise<CheckResult>[] = []
     let checkResult: Record<string, CheckResult> = {};
     const limit = pLimit(5);
+    const minute = Math.round(event.scheduledTime / 60000)
     for (const monitor of workerConfig.monitors) {
-      checkQueue.push(limit(() => doMonitor(monitor, workerLocation, env)))
+      // A monitor with no state yet runs at once so it shows on the page
+      if (
+        !monitor.intervalMinutes ||
+        minute % monitor.intervalMinutes === 0 ||
+        state.incidentLen(monitor.id) === 0
+      )
+        checkQueue.push(limit(() => doMonitor(monitor, workerLocation, env)))
     }
     for (const result of await Promise.all(checkQueue)) {
       checkResult[result.id] = result
@@ -42,6 +49,12 @@ const Worker = {
       console.log(`Processing monitor result: ${monitor.name} (${monitor.id})`)
 
       let monitorStatusChanged = false
+      if (!checkResult[monitor.id]) {
+        // Not due this minute: its incidents and latency stay as they are, only the counters need it
+        const last = state.getIncident(monitor.id, state.incidentLen(monitor.id) - 1)
+        last.end === null ? state.data.overallDown++ : state.data.overallUp++
+        continue
+      }
       const { location: checkLocation, status } = checkResult[monitor.id]
 
       // Update counters
@@ -119,6 +132,13 @@ const Worker = {
         }
 
         const currentIncident = state.getIncident(monitor.id, state.incidentLen(monitor.id) - 1)
+        const grace = workerConfig.notification?.gracePeriod
+        const downFor = currentTimeSecond - currentIncident.start[0]
+        // The incident's first DOWN alert, as opposed to one for a later change of error reason
+        const firstAlert =
+          grace === undefined
+            ? downFor === 0
+            : downFor >= grace * 60 - 30 && downFor < grace * 60 + 30
         try {
           if (
             // monitor status changed AND...
@@ -136,10 +156,7 @@ const Worker = {
               currentTimeSecond - currentIncident.start[0] <
                 workerConfig.notification.gracePeriod * 60 + 30)
           ) {
-            if (
-              currentIncident.start[0] !== currentTimeSecond &&
-              workerConfig.notification?.skipErrorChangeNotification
-            ) {
+            if (!firstAlert && workerConfig.notification?.skipErrorChangeNotification) {
               console.log(
                 'Skipping notification for following error reason change due to user config'
               )
@@ -231,6 +248,12 @@ const Worker = {
       statusChanged ||= monitorStatusChanged
     }
 
+    // Drop the history of monitors no longer in the config, so it stops reaching the page
+    const ids = new Set(workerConfig.monitors.map((m) => m.id))
+    for (const records of [state.data.incident, state.data.latency]) {
+      for (const id of Object.keys(records)) if (!ids.has(id)) delete records[id]
+    }
+
     console.log(
       `statusChanged: ${statusChanged}, lastUpdate: ${state.data.lastUpdate}, currentTime: ${currentTimeSecond}`
     )
@@ -238,6 +261,8 @@ const Worker = {
     // Allow for a cooldown period before writing to storage
     if (
       statusChanged ||
+      // A monitor checked less often saves every check, or the cooldown would drop most of them
+      workerConfig.monitors.some((m) => m.intervalMinutes && checkResult[m.id]) ||
       currentTimeSecond - state.data.lastUpdate >=
         (workerConfig.kvWriteCooldownMinutes ?? 3) * 60 - 10 // Allow for 10 seconds of clock drift
     ) {
