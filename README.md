@@ -23,7 +23,7 @@ The status page for the public Libex instance.
 This is the uptime page for [Libex](https://github.com/LibexHQ/Libex)'s public instance at
 [libexdb.com](https://libexdb.com), live at [status.libexdb.com](https://status.libexdb.com). It
 runs on [UptimeFlare](https://github.com/lyc8503/UptimeFlare) by lyc8503: a Cloudflare Worker
-checks each target every minute and a Cloudflare Pages site shows the history.
+checks the targets every minute and a Cloudflare Pages site shows the history.
 
 ## What it watches
 
@@ -31,15 +31,20 @@ checks each target every minute and a Cloudflare Pages site shows the history.
 |---|---|---|---|
 | API | `api` | https://libexdb.com/ | it answers 200 |
 | API health | `health` | https://libexdb.com/health | it answers 200 with `"status":"ok"` |
-| Search (US) | `libex-search-us` | https://libexdb.com/search?region=us&title=the%20hobbit&limit=1 | it answers 200 within 20 seconds |
-| Search (UK) | `libex-search-uk` | https://libexdb.com/search?region=uk&title=the%20hobbit&limit=1 | it answers 200 within 20 seconds |
+| Search | `libex-search` | https://libexdb.com/search?region=us&title=the%20hobbit&limit=1 | it answers 200 within 20 seconds |
 | Database stats | `db_stats` | https://libexdb.com/db/stats | it answers 200 |
+
+Search is checked every 5 minutes, not every minute, because each check is a live Audible search.
+Its `intervalMinutes: 5` makes the worker skip it on the other minutes, and between checks it keeps
+its last state, so a skipped minute never shows as down. Every Search check is saved, so its
+response-time chart gets a point every 5 minutes.
 
 ## Adding or removing a monitor
 
 Monitors live in the `monitors` list in `uptime.config.ts`. To add one, copy an entry and give
-it a new `id`, a `name` and a `target` URL. To remove one, delete its entry. The `id` is what
-keeps a monitor's history, so I never reuse an old one for a different URL. Edits go through a
+it a new `id`, a `name` and a `target` URL. To remove one, delete its entry;
+the worker then drops its history, and renaming an `id` does the same. The `id` is what keeps a
+monitor's history, so I never reuse an old one for a different URL. Edits go through a
 PR into `dev` like any other change.
 
 ## Alerts
