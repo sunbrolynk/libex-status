@@ -47,6 +47,8 @@ export type MonitorTarget = {
   checkProxyFallback?: boolean
   // Check only on minutes divisible by this; between checks the monitor keeps its last state
   intervalMinutes?: number
+  // Response time in ms above which the page calls the monitor degraded; SLOW_MS when unset
+  slowMs?: number
 }
 
 export type WorkerConfig<TEnv = Env> = {

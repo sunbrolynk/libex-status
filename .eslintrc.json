@@ -22,6 +22,7 @@
     {
       "files": [
         "pages/api/data.ts",
+        "pages/api/badge.ts",
         "middleware.ts"
       ],
       "rules": {
